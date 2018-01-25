@@ -1,3 +1,20 @@
+# 基于MatchZoo的深度文本匹配模型(geminet)
+
+在MatchZoo的基础上，设计了Geminet模型，在WikiQA问答数据上进行了实验。
+
+## 运行方式
+
+- 测试:
+> cd scripts && ./run.sh <network_name> <gpu_id>
+
+- 生成GloVe词向量：
+> cd glove && ./demo.sh
+
+- 处理相关数据：
+> cd data/WikiQA/run_data.sh
+
+## MatchZoo
+
 <div align='center'>
 <img src="./docs/_static/images/matchzoo-logo.png" width = "400"  alt="图片名称" align=center />
 </div>
