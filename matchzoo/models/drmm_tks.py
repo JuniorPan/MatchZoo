@@ -7,7 +7,15 @@ from keras.models import Sequential, Model
 from keras.layers import *
 from model import BasicModel
 from keras.activations import softmax
-from utils.utility import *
+
+import sys
+
+from theano.sparse import Dot
+
+from matchzoo.utils.utility import show_layer_info
+
+sys.path.append('../matchzoo/utils/')
+from utility import *
 
 class DRMM_TKS(BasicModel):
     """DRMM_TKS model, this is a variant version of DRMM, which applied topk pooling in the matching matrix.

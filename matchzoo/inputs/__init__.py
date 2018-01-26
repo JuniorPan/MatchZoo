@@ -8,10 +8,12 @@ from .point_generator import Triletter_PointGenerator
 from .point_generator import DRMM_PointGenerator
 
 from .pair_generator import PairGenerator
+from .pair_generator import WordPOS_PairGenerator
 from .pair_generator import Triletter_PairGenerator
 from .pair_generator import DRMM_PairGenerator
 from .pair_generator import PairGenerator_Feats
 from .list_generator import ListGenerator
+from .list_generator import WordPOS_ListGenerator
 from .list_generator import Triletter_ListGenerator
 from .list_generator import DRMM_ListGenerator
 from .list_generator import ListGenerator_Feats

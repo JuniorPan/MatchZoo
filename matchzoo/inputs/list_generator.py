@@ -74,14 +74,14 @@ class ListGenerator(ListBasicGenerator):
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
 
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             ID_pairs = []
             list_count = [0]
-            X1 = np.zeros((bsize, self.data1_maxlen), dtype=np.int32)
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2 = np.zeros((bsize, self.data2_maxlen), dtype=np.int32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data2_maxlen), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1[:] = self.fill_word
             X2[:] = self.fill_word
             j = 0
@@ -118,13 +118,13 @@ class ListGenerator(ListBasicGenerator):
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
 
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             list_count = [0]
-            X1 = np.zeros((bsize, self.data1_maxlen), dtype=np.int32)
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2 = np.zeros((bsize, self.data2_maxlen), dtype=np.int32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data2_maxlen), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1[:] = self.fill_word
             X2[:] = self.fill_word
             j = 0
@@ -148,6 +148,124 @@ class ListGenerator(ListBasicGenerator):
             list_count_ls.append(list_count)
         return x1_ls, x1_len_ls, x2_ls, x2_len_ls, y_ls, list_count_ls
 
+
+class WordPOS_ListGenerator(ListBasicGenerator):
+    def __init__(self, config={}):
+        super(WordPOS_ListGenerator, self).__init__(config=config)
+        self.__name = 'WordPOS_ListGenerator'
+        self.data1 = config['data1']
+        self.data2 = config['data2']
+        self.postag_data1= config['postag_data1']
+        self.postag_data2= config['postag_data2']
+        self.data1_maxlen = config['text1_maxlen']
+        self.data2_maxlen = config['text2_maxlen']
+        self.pos1_maxlen = config['pos1_maxlen']
+        self.pos2_maxlen = config['pos2_maxlen']
+        self.fill_word = config['vocab_size'] - 1
+        self.check_list.extend(['data1', 'data2', 'postag_data1', 'postag_data2', 'text1_maxlen', 'text2_maxlen'])
+        if not self.check():
+            raise TypeError('[WordPOS_ListGenerator] parameter check wrong.')
+        print('[WordPOS_ListGenerator] init done', end='\n')
+
+    def get_batch(self):
+        while self.point < self.num_list:
+            currbatch = []
+            if self.point + self.batch_list <= self.num_list:
+                currbatch = self.list_list[self.point: self.point+self.batch_list]
+                self.point += self.batch_list
+            else:
+                currbatch = self.list_list[self.point:]
+                self.point = self.num_list
+
+            batch_size = sum([len(pt[1]) for pt in currbatch])
+            ID_pairs = []
+            list_count = [0]
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            XP1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data2_maxlen), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            XP2_len = np.zeros((batch_size,), dtype=np.int32)
+
+            XP1 = np.zeros((batch_size, self.pos1_maxlen), dtype=np.int32)
+            XP2 = np.zeros((batch_size, self.pos2_maxlen), dtype=np.int32)
+
+            Y = np.zeros((batch_size,), dtype= np.int32)
+            X1[:] = self.fill_word
+            XP1[:] = self.fill_word
+            X2[:] = self.fill_word
+            XP2[:] = self.fill_word
+            j = 0
+            for pt in currbatch:
+                d1, d2_list = pt[0], pt[1]
+                d1_cont = list(self.data1[d1])
+                dp1_cont = list(self.postag_data1[d1])
+                list_count.append(list_count[-1] + len(d2_list))
+                d1_len = min(self.data1_maxlen, len(d1_cont))
+                dp1_len = min(self.pos1_maxlen, len(dp1_cont))
+                for l, d2 in d2_list:
+                    d2_cont = list(self.data2[d2])
+                    dp2_cont = list(self.postag_data2[d2])
+                    d2_len = min(self.data2_maxlen, len(d2_cont))
+                    dp2_len = min(self.pos2_maxlen, len(dp2_cont))
+                    X1[j, :d1_len], X1_len[j] = d1_cont[:d1_len], d1_len
+                    X2[j, :d2_len], X2_len[j] = d2_cont[:d2_len], d2_len
+                    XP1[j, :dp1_len], XP1_len[j] = dp1_cont[:dp1_len], dp1_len
+                    XP2[j, :dp2_len], XP2_len[j] = dp2_cont[:dp2_len], dp2_len
+                    ID_pairs.append((d1, d2))
+                    Y[j] = l
+                    j += 1
+            yield X1, XP1, X1_len, XP1_len, X2, XP2, X2_len, XP2_len, Y, ID_pairs, list_count
+
+    def get_batch_generator(self):
+        for X1, XP1, X1_len, XP1_len, X2, XP2, X2_len, XP2_len, Y, ID_pairs, list_counts in self.get_batch():
+            if self.config['use_dpool']:
+                yield ({'query': X1, 'query_pos': XP1, 'query_len': X1_len, 'query_pos_len': XP1_len, 'doc': X2, 'doc_pos': XP2, 'doc_len': X2_len, 'doc_pos_len': XP2_len, 'dpool_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['text1_maxlen'], self.config['text2_maxlen']), 'dpool_pos_index': DynamicMaxPooling.dynamic_pooling_index(XP1_len, XP2_len, self.config['pos1_maxlen'], self.config['pos2_maxlen']), 'ID': ID_pairs, 'list_counts': list_counts}, Y)
+            else:
+                yield ({'query': X1, 'query_pos': XP1, 'query_len': X1_len, 'query_pos_len': XP1_len, 'doc': X2, 'doc_pos': XP2, 'doc_len': X2_len, 'doc_pos_len': XP2_len, 'ID': ID_pairs, 'list_counts': list_counts}, Y)
+
+    def get_all_data(self):
+        x1_ls, x1_len_ls, x2_ls, x2_len_ls, y_ls, list_count_ls = [], [], [], [], [], []
+        while self.point < self.num_list:
+            currbatch = []
+            if self.point + self.batch_list <= self.num_list:
+                currbatch = self.list_list[self.point: self.point+self.batch_list]
+                self.point += self.batch_list
+            else:
+                currbatch = self.list_list[self.point:]
+                self.point = self.num_list
+
+            batch_size = sum([len(pt[1]) for pt in currbatch])
+            list_count = [0]
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data2_maxlen), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
+            X1[:] = self.fill_word
+            X2[:] = self.fill_word
+            j = 0
+            for pt in currbatch:
+                d1, d2_list = pt[0], pt[1]
+                d1_cont = list(self.data1[d1])
+                list_count.append(list_count[-1] + len(d2_list))
+                d1_len = min(self.data1_maxlen, len(d1_cont))
+                for l, d2 in d2_list:
+                    d2_cont = list(self.data2[d2])
+                    d2_len = min(self.data2_maxlen, len(d2_cont))
+                    X1[j, :d1_len], X1_len[j] = d1_cont[:d1_len], d1_len
+                    X2[j, :d2_len], X2_len[j] = d2_cont[:d2_len], d2_len
+                    Y[j] = l
+                    j += 1
+            x1_ls.append(X1)
+            x1_len_ls.append(X1_len)
+            x2_ls.append(X2)
+            x2_len_ls.append(X2_len)
+            y_ls.append(Y)
+            list_count_ls.append(list_count)
+        return x1_ls, x1_len_ls, x2_ls, x2_len_ls, y_ls, list_count_ls
+
+
 class Triletter_ListGenerator(ListBasicGenerator):
     def __init__(self, config={}):
         super(Triletter_ListGenerator, self).__init__(config=config)
@@ -170,7 +288,7 @@ class Triletter_ListGenerator(ListBasicGenerator):
         word_triletter_map = {}
         for line in open(wt_map_file):
             r = line.strip().split()
-            word_triletter_map[int(r[0])] = list(map(int, r[1:]))
+            word_triletter_map[r[0]] = r[1:]
         return word_triletter_map
 
     def map_word_to_triletter(self, words):
@@ -209,12 +327,12 @@ class Triletter_ListGenerator(ListBasicGenerator):
             else:
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             ID_pairs = []
             list_count = [0]
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1, X2 = [], []
             j = 0
             for pt in currbatch:
@@ -253,11 +371,11 @@ class Triletter_ListGenerator(ListBasicGenerator):
             else:
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             list_count = [0]
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1, X2 = [], []
             j = 0
             for pt in currbatch:
@@ -345,14 +463,14 @@ class DRMM_ListGenerator(ListBasicGenerator):
             else:
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             list_count = [0]
             ID_pairs = []
-            X1 = np.zeros((bsize, self.data1_maxlen), dtype=np.int32)
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2 = np.zeros((bsize, self.data1_maxlen, self.hist_size), dtype=np.float32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data1_maxlen, self.hist_size), dtype=np.float32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1[:] = self.fill_word
             j = 0
             for pt in currbatch:
@@ -383,13 +501,13 @@ class DRMM_ListGenerator(ListBasicGenerator):
             else:
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             list_count = [0]
-            X1 = np.zeros((bsize, self.data1_maxlen), dtype=np.int32)
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2 = np.zeros((bsize, self.data1_maxlen, self.hist_size), dtype=np.float32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data1_maxlen, self.hist_size), dtype=np.float32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1[:] = self.fill_word
             X2[:] = self.fill_word
             j = 0
@@ -446,16 +564,16 @@ class ListGenerator_Feats(ListBasicGenerator):
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
 
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             list_count = [0]
             ID_pairs = []
-            X1 = np.zeros((bsize, self.data1_maxlen), dtype=np.int32)
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2 = np.zeros((bsize, self.data2_maxlen), dtype=np.int32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            X3 = np.zeros((bsize, self.pair_feat_size), dtype=np.float32)
-            X4 = np.zeros((bsize, self.query_feat_size), dtype=np.float32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data2_maxlen), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            X3 = np.zeros((batch_size, self.pair_feat_size), dtype=np.float32)
+            X4 = np.zeros((batch_size, self.query_feat_size), dtype=np.float32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1[:] = self.fill_word
             X2[:] = self.fill_word
             j = 0
@@ -489,15 +607,15 @@ class ListGenerator_Feats(ListBasicGenerator):
             else:
                 currbatch = self.list_list[self.point:]
                 self.point = self.num_list
-            bsize = sum([len(pt[1]) for pt in currbatch])
+            batch_size = sum([len(pt[1]) for pt in currbatch])
             list_count = [0]
-            X1 = np.zeros((bsize, self.data1_maxlen), dtype=np.int32)
-            X1_len = np.zeros((bsize,), dtype=np.int32)
-            X2 = np.zeros((bsize, self.data2_maxlen), dtype=np.int32)
-            X2_len = np.zeros((bsize,), dtype=np.int32)
-            X3 = np.zeros((bsize, self.pair_feat_size), dtype=np.float32)
-            X4 = np.zeros((bsize, self.query_feat_size), dtype=np.float32)
-            Y = np.zeros((bsize,), dtype= np.int32)
+            X1 = np.zeros((batch_size, self.data1_maxlen), dtype=np.int32)
+            X1_len = np.zeros((batch_size,), dtype=np.int32)
+            X2 = np.zeros((batch_size, self.data2_maxlen), dtype=np.int32)
+            X2_len = np.zeros((batch_size,), dtype=np.int32)
+            X3 = np.zeros((batch_size, self.pair_feat_size), dtype=np.float32)
+            X4 = np.zeros((batch_size, self.query_feat_size), dtype=np.float32)
+            Y = np.zeros((batch_size,), dtype= np.int32)
             X1[:] = self.fill_word
             X2[:] = self.fill_word
             j = 0

@@ -11,6 +11,8 @@ import numpy
 numpy.random.seed(49999)
 import tensorflow
 tensorflow.set_random_seed(49999)
+gpu_options = tensorflow.GPUOptions(per_process_gpu_memory_fraction=0.7)
+sess = tensorflow.Session(config=tensorflow.ConfigProto(gpu_options=gpu_options))
 
 from collections import OrderedDict
 
@@ -22,10 +24,8 @@ from utils import *
 import inputs
 import metrics
 from losses import *
+import gc
 
-config = tensorflow.ConfigProto()
-config.gpu_options.allow_growth = True
-sess = tensorflow.Session(config = config)
 
 def load_model(config):
     global_conf = config["global"]
@@ -42,9 +42,9 @@ def load_model(config):
     return mo
 
 
-def train(config):
+def train(config, config_str=''):
 
-    print(json.dumps(config, indent=2), end='\n')
+    # print(json.dumps(config, indent=2), end='\n')
     # read basic config
     global_conf = config["global"]
     optimizer = global_conf['optimizer']
@@ -69,6 +69,15 @@ def train(config):
         embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['vocab_size'], share_input_conf['embed_size']]))
         share_input_conf['embed'] = embed
     print('[Embedding] Embedding Load Done.', end='\n')
+
+
+    if 'pos_embed_path' in share_input_conf:
+        embed_dict = read_embedding(filename=share_input_conf['pos_embed_path'])
+        _PAD_ = share_input_conf['pos_vocab_size'] - 1
+        embed_dict[_PAD_] = np.zeros((share_input_conf['pos_embed_size'], ), dtype=np.float32)
+        embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['pos_vocab_size'], share_input_conf['pos_embed_size']]))
+        share_input_conf['pos_embed'] = convert_embed_2_numpy(embed_dict, embed = embed)
+    print('[Embedding] POS Embedding Load Done.', end='\n')
 
     # list all input tags and construct tags config
     input_train_conf = OrderedDict()
@@ -99,6 +108,14 @@ def train(config):
             datapath = input_conf[tag]['text2_corpus']
             if datapath not in dataset:
                 dataset[datapath], _ = read_data(datapath)
+        if 'text1_postag_corpus' in input_conf[tag]:
+            datapath = input_conf[tag]['text1_postag_corpus']
+            if datapath not in dataset:
+                dataset[datapath], _ = read_data(datapath)
+        if 'text2_postag_corpus' in input_conf[tag]:
+            datapath = input_conf[tag]['text2_postag_corpus']
+            if datapath not in dataset:
+                dataset[datapath], _ = read_data(datapath)
     print('[Dataset] %s Dataset Load Done.' % len(dataset), end='\n')
 
     # initial data generator
@@ -109,6 +126,10 @@ def train(config):
         print(conf, end='\n')
         conf['data1'] = dataset[conf['text1_corpus']]
         conf['data2'] = dataset[conf['text2_corpus']]
+        if 'text1_postag_corpus' in conf:
+            conf['postag_data1'] = dataset[conf['text1_postag_corpus']]
+        if 'text2_postag_corpus' in conf:
+            conf['postag_data2'] = dataset[conf['text2_postag_corpus']]
         generator = inputs.get(conf['input_type'])
         train_gen[tag] = generator( config = conf )
 
@@ -116,6 +137,10 @@ def train(config):
         print(conf, end='\n')
         conf['data1'] = dataset[conf['text1_corpus']]
         conf['data2'] = dataset[conf['text2_corpus']]
+        if 'text1_postag_corpus' in conf:
+            conf['postag_data1'] = dataset[conf['text1_postag_corpus']]
+        if 'text2_postag_corpus' in conf:
+            conf['postag_data2'] = dataset[conf['text2_postag_corpus']]
         generator = inputs.get(conf['input_type'])
         eval_gen[tag] = generator( config = conf )
 
@@ -139,6 +164,8 @@ def train(config):
     model.compile(optimizer=optimizer, loss=loss)
     print('[Model] Model Compile Done.', end='\n')
 
+    max_ndcg3 = 0.0
+    record_file = open('../record.tsv','a')
     for i_e in range(num_iters):
         for tag, generator in train_gen.items():
             genfun = generator.get_batch_generator()
@@ -147,7 +174,7 @@ def train(config):
                     genfun,
                     steps_per_epoch = display_interval,
                     epochs = 1,
-                    shuffle=False,
+                    # shuffle=False,
                     verbose = 0
                 ) #callbacks=[eval_map])
             print('Iter:%d\tloss=%.6f' % (i_e, history.history['loss'][0]), end='\n')
@@ -173,9 +200,18 @@ def train(config):
                     num_valid += 1
             generator.reset()
             print('Iter:%d\t%s' % (i_e, '\t'.join(['%s=%f'%(k,v/num_valid) for k, v in res.items()])), end='\n')
+            if tag == 'test':
+                ndcg3 = res['ndcg@3'] / num_valid
+                max_ndcg3 = max(max_ndcg3, ndcg3)
             sys.stdout.flush()
         if (i_e+1) % save_weights_iters == 0:
             model.save_weights(weights_file % (i_e+1))
+    record_file.write('{}\t{}\n'.format(config_str, max_ndcg3))
+    record_file.close()
+    K.clear_session()
+    del model
+    for i in range(20):
+        gc.collect()
 
 def predict(config):
     ######## Read input config ########
@@ -195,6 +231,14 @@ def predict(config):
         embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['vocab_size'], share_input_conf['embed_size']]))
         share_input_conf['embed'] = embed
     print('[Embedding] Embedding Load Done.', end='\n')
+
+    if 'pos_embed_path' in share_input_conf:
+        embed_dict = read_embedding(filename=share_input_conf['pos_embed_path'])
+        _PAD_ = share_input_conf['pos_vocab_size'] - 1
+        embed_dict[_PAD_] = np.zeros((share_input_conf['pos_embed_size'], ), dtype=np.float32)
+        embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['pos_vocab_size'], share_input_conf['pos_embed_size']]))
+        share_input_conf['pos_embed'] = convert_embed_2_numpy(embed_dict, embed = embed)
+    print('[Embedding] POS Embedding Load Done.', end='\n')
 
     # list all input tags and construct tags config
     input_predict_conf = OrderedDict()
@@ -219,6 +263,14 @@ def predict(config):
                 datapath = input_conf[tag]['text2_corpus']
                 if datapath not in dataset:
                     dataset[datapath], _ = read_data(datapath)
+            if 'text1_postag_corpus' in input_conf[tag]:
+                datapath = input_conf[tag]['text1_postag_corpus']
+                if datapath not in dataset:
+                    dataset[datapath], _ = read_data(datapath)
+            if 'text2_postag_corpus' in input_conf[tag]:
+                datapath = input_conf[tag]['text2_postag_corpus']
+                if datapath not in dataset:
+                    dataset[datapath], _ = read_data(datapath)
     print('[Dataset] %s Dataset Load Done.' % len(dataset), end='\n')
 
     # initial data generator
@@ -228,6 +280,10 @@ def predict(config):
         print(conf, end='\n')
         conf['data1'] = dataset[conf['text1_corpus']]
         conf['data2'] = dataset[conf['text2_corpus']]
+        if 'text1_postag_corpus' in conf:
+            conf['postag_data1'] = dataset[conf['text1_postag_corpus']]
+        if 'text2_postag_corpus' in conf:
+            conf['postag_data2'] = dataset[conf['text2_postag_corpus']]
         generator = inputs.get(conf['input_type'])
         predict_gen[tag] = generator(
                                     #data1 = dataset[conf['text1_corpus']],
@@ -316,7 +372,32 @@ def main(argv):
     with open(model_file, 'r') as f:
         config = json.load(f)
     phase = args.phase
-    if args.phase == 'train':
+    # if args.phase == 'train':
+    #     train(config)
+    if args.phase == 'tune':
+        optimizer_list = ['adadelta']
+        learning_rate_list = [0.0001, 0.0003, 0.001]
+        text12_maxlen_list = [(12,40), (15, 50)]
+        pos12_maxlen_list = [(15,50),(20,70)]
+        kernel_count_list = [64, 96]
+        kernel_size_list = [3]
+        dropout_rate_list = [0, 0.2, 0.4]
+        import itertools
+        for param_tuple in itertools.product(kernel_count_list, kernel_size_list, dropout_rate_list, optimizer_list, learning_rate_list, text12_maxlen_list, pos12_maxlen_list):
+            kernel_count, kernel_size, dropout_rate, optimizer, learning_rate, text12_maxlen, pos12_maxlen = param_tuple
+            config['global']['learning_rate'] = learning_rate
+            config['global']['optimizer'] = optimizer
+            config['inputs']['share']['text1_maxlen'] = text12_maxlen[0]
+            config['inputs']['share']['text2_maxlen'] = text12_maxlen[1]
+            config['inputs']['share']['pos1_maxlen'] = pos12_maxlen[0]
+            config['inputs']['share']['pos2_maxlen'] = pos12_maxlen[1]
+            config['model']['setting']['kernel_count'] = kernel_count
+            config['model']['setting']['kernel_size'] = [kernel_size, kernel_size]
+            config['model']['setting']['dpool_size'] = [kernel_size, 10]
+            config['model']['setting']['dropout_rate'] = dropout_rate
+            config_str = str(param_tuple)
+            train(config, param_tuple)
+    elif args.phase == 'train':
         train(config)
     elif args.phase == 'predict':
         predict(config)

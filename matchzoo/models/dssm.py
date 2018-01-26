@@ -9,9 +9,13 @@ from keras.models import Sequential, Model
 from keras.layers import *
 from keras.activations import softmax
 import tensorflow as tf
+
 from model import BasicModel
-from utils.utility import *
-from layers.SparseFullyConnectedLayer import *
+import sys
+sys.path.append('../matchzoo/layers/')
+sys.path.append('../matchzoo/utils/')
+from utility import *
+from SparseFullyConnectedLayer import *
 
 class DSSM(BasicModel):
     def __init__(self, config):
@@ -45,9 +49,9 @@ class DSSM(BasicModel):
             if num_hidden_layers == 1:
                 seq.add(Dense(self.config['hidden_sizes'][0], input_shape=(input_dim,), activity_regularizer=regularizers.l2(self.config['reg_rate'])))
             else:
-                seq.add(Dense(self.config['hidden_sizes'][0], activation='tanh', input_shape=(input_dim,), activity_regularizer=regularizers.l2(self.config['reg_rate'])))
+                seq.add(Dense(self.config['hidden_sizes'][0], activation='relu', input_shape=(input_dim,), activity_regularizer=regularizers.l2(self.config['reg_rate'])))
                 for i in range(num_hidden_layers-2):
-                    seq.add(Dense(self.config['hidden_sizes'][i+1], activation='tanh', activity_regularizer=regularizers.l2(self.config['reg_rate'])))
+                    seq.add(Dense(self.config['hidden_sizes'][i+1], activation='relu', activity_regularizer=regularizers.l2(self.config['reg_rate'])))
                     seq.add(Dropout(rate=self.config['dropout_rate']))
                 seq.add(Dense(self.config['hidden_sizes'][num_hidden_layers-1], activity_regularizer=regularizers.l2(self.config['reg_rate'])))
                 seq.add(Dropout(rate=self.config['dropout_rate']))

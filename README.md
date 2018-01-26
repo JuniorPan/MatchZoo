@@ -16,15 +16,15 @@
 ## MatchZoo
 
 <div align='center'>
-<img src="./docs/_static/images/matchzoo-logo.png" width = "400"  alt="图片名称" align=center />
+<img src="./data/matchzoo-logo.png" width = "400"  alt="图片名称" align=center />
 </div>
 
 ---
-MatchZoo is a toolkit for text matching. It was developed with a focus on facilitating the designing, comparing and sharing of deep text matching models. There are a number of deep matching methods, such as DRMM, MatchPyramid, MV-LSTM, aNMM, DUET, ARC-I, ARC-II, DSSM, and CDSSM, designed with a unified interface. Potential tasks related to MatchZoo include document retrieval, question answering, conversational response ranking, paraphrase identification, etc. We are always happy to receive any code contributions, suggestions, comments from all our MatchZoo users.
+MatchZoo is a toolkit for text matching. It was developed with a focus on facilitating the designing, comparing and sharing of deep text matching models. There are a number of deep matching methods, such as DRMM, MatchPyramid, MV-LSTM, aNMM, DUET, ARC-I, ARC-II, DSSM, and CDSSM, designed with a unified interface. Potential tasks related to MatchZoo include document retrieval, question answering, conversational response ranking, paraphrase identification, etc. We are always happy to receive any code constributions, suggestions, comments from all our MatchZoo users.
 
 <table>
   <tr>
-    <th width=30%, bgcolor=#999999 >Tasks</th> 
+    <th width=30%, bgcolor=#999999 >Tasks</th>
     <th width=20%, bgcolor=#999999>Text 1</th>
     <th width="20%", bgcolor=#999999>Text 2</th>
     <th width="20%", bgcolor=#999999>Objective</th>
@@ -61,25 +61,10 @@ MatchZoo is a toolkit for text matching. It was developed with a focus on facili
   </tr>
 </table>
 
-## Installation
-MatchZoo is still under development. Before the first stable release (1.0), please clone the repository and run
-```
-git clone https://github.com/faneshion/MatchZoo.git
-cd MatchZoo
-python setup.py install
-```
-In the main directory, this will install the dependencies automatically.
-
-For usage examples, you can run
-```
-python matchzoo/main.py --phase train --model_file examples/toy_example/config/arci_ranking.config
-python matchzoo/main.py --phase predict --model_file examples/toy_example/config/arci_ranking.config
-```
-
 ## Overview
 The architecture of the MatchZoo toolkit is described in the Figure  in what follows,
 <div align='center'>
-<img src="./docs/_static/images/matchzoo.png" width = "400" height = "200" alt="图片名称" align=center />
+<img src="./data/matchzoo.png" width = "400" height = "200" alt="图片名称" align=center />
 </div>
 There are three major modules in the toolkit, namely data preparation, model construction, training and evaluation, respectively. These three modules are actually organized as a pipeline of data flow.
 
@@ -99,31 +84,41 @@ Moreover, the toolkit has implemented two schools of representative deep text ma
 ### Training and Evaluation
 For learning the deep matching models, the toolkit provides a variety of objective functions for regression, classification and ranking. For example, the ranking-related objective functions include several well-known pointwise, pairwise and listwise losses. It is flexible for users to pick up different objective functions in the training phase for optimization. Once a model has been trained, the toolkit could be used to produce a matching score, predict a matching label, or rank target texts (e.g., a document) against an input text.
 
+## Usage
+```
+git clone https://github.com/faneshion/MatchZoo.git
+cd MatchZoo
+python setup.py install
+
+python main.py --phase train --model_file ./models/arci_ranking.config
+python main.py --phase predict --model_file ./models/arci_ranking.config
+```
+
 ## Benchmark Results:
-Here, we adopt <a href="https://www.microsoft.com/en-us/download/details.aspx?id=52419">WikiQA</a> dataset for an example to inllustrate the usage of MatchZoo. WikiQA is a popular benchmark dataset for answer sentence selection in question answering. We have provided <a href="./data/WikiQA/run_data.sh">a script</a> to download the dataset, and prepared it into the MatchZoo data format. In the <a href="">models directory</a>, there are a number of configurations about each model for WikiQA dataset. 
+Here, we adopt <a href="https://www.microsoft.com/en-us/download/details.aspx?id=52419">WikiQA</a> dataset for an example to inllustrate the usage of MatchZoo. WikiQA is a popular benchmark dataset for answer sentence selection in question answering. We have provided <a href="./data/WikiQA/run_data.sh">a script</a> to download the dataset, and prepared it into the MatchZoo data format. In the <a href="">models directory</a>, there are a number of configurations about each model for WikiQA dataset.
 
 Take the DRMM as an example. In training phase, you can run
 ```
-python matchzoo/main.py --phase train --model_file examples/wikiqa/config/drmm_wikiqa.config
+python main.py --phase train --model_file models/wikiqa_config/drmm_wikiqa.config
 ```
 In testing phase, you can run
 ```
-python matchzoo/main.py --phase predict --model_file examples/wikiqa/config/drmm_wikiqa.config
+python main.py --phase predict --model_file models/wikiqa_config/drmm_wikiqa.config
 ```
 
 We have compared 10 models, the results are as follows.
 <table>
   <tr>
-    <th width=10%, bgcolor=#999999 >Models</th> 
+    <th width=10%, bgcolor=#999999 >Models</th>
     <th width=20%, bgcolor=#999999>NDCG@3</th>
     <th width="20%", bgcolor=#999999>NDCG@5</th>
     <th width="20%", bgcolor=#999999>MAP</th>
   </tr>
   <tr>
     <td align="center", bgcolor=#eeeeee> DSSM </td>
-    <td align="center", bgcolor=#eeeeee> 0.5439 </td>
-    <td align="center", bgcolor=#eeeeee> 0.6134 </td>
-    <td align="center", bgcolor=#eeeeee> 0.5647 </td>
+    <td align="center", bgcolor=#eeeeee> 0.3412 </td>
+    <td align="center", bgcolor=#eeeeee> 0.4179 </td>
+    <td align="center", bgcolor=#eeeeee> 0.3840 </td>
   </tr>
   <tr>
   	 <td align="center", bgcolor=#eeeeee> CDSSM </td>
@@ -179,18 +174,18 @@ We have compared 10 models, the results are as follows.
   	 <td align="center", bgcolor=#eeeeee> 0.6956 </td>
   	 <td align="center", bgcolor=#eeeeee> 0.6586 </td>
   </tr>
- 
+
 </table>
 The loss of each models are described in the following figure,
  <div align='center'>
-<img src="./docs/_static/images/matchzoo.wikiqa.loss.png" width = "550" alt="图片名称" align=center />
+<img src="./data/matchzoo.wikiqa.loss.png" width = "550" alt="图片名称" align=center />
 </div>
 
 The MAP of each models are depicted in the following figure,
 <div align='center'>
-<img src="./docs/_static/images/matchzoo.wikiqa.map.png" width = "550" alt="图片名称" align=center />
+<img src="./data/matchzoo.wikiqa.map.png" width = "550" alt="图片名称" align=center />
 </div>
-Here, the DRMM_TKS is a variant of DRMM for short text matching. Specifically, the matching histogram is replaced by a top-k maxpooling layer and the remaining part are fixed. 
+Here, the DRMM_TKS is a variant of DRMM for short text matching. Specifically, the matching histogram is replaced by a top-k maxpooling layer and the remaining part are fixed.
 
 ## Model Detail:
 
@@ -199,7 +194,7 @@ Here, the DRMM_TKS is a variant of DRMM for short text matching. Specifically, t
 this model is an implementation of <a href="http://www.bigdatalab.ac.cn/~gjf/papers/2016/CIKM2016a_guo.pdf">A Deep Relevance Matching Model for Ad-hoc Retrieval</a>.
 
 - model file: models/drmm.py
-- model config: models/drmm_ranking.config
+- config file: models/drmm_ranking.config
 
 ---
 2. MatchPyramid
@@ -207,7 +202,7 @@ this model is an implementation of <a href="http://www.bigdatalab.ac.cn/~gjf/pap
 this model is an implementation of <a href="https://arxiv.org/abs/1602.06359"> Text Matching as Image Recognition</a>
 
 - model file: models/matchpyramid.py
-- model config: models/matchpyramid_ranking.config
+- config file: models/matchpyramid_ranking.config
 
 ---
 3. ARC-I
@@ -223,7 +218,7 @@ this model is an implementation of <a href="https://arxiv.org/abs/1503.03244">Co
 this model is an implementation of <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/cikm2013_DSSM_fullversion.pdf">Learning Deep Structured Semantic Models for Web Search using Clickthrough Data</a>
 
 - model file: models/dssm.py
-- model config: models/dssm_ranking.config
+- config file: models/dssm_ranking.config
 
 ---
 5. CDSSM
@@ -231,7 +226,7 @@ this model is an implementation of <a href="https://www.microsoft.com/en-us/rese
 this model is an implementation of <a href="https://www.microsoft.com/en-us/research/publication/learning-semantic-representations-using-convolutional-neural-networks-for-web-search/">Learning Semantic Representations Using Convolutional Neural Networks for Web Search</a>
 
 - model file: models/cdssm.py
-- model config: models/cdssm_ranking.config
+- config file: models/cdssm_ranking.config
 
 ---
 6. ARC-II
@@ -289,7 +284,7 @@ Project Organizers
     - Institute of Computing Technolgy, Chinese Academy of Sciences
     - [HomePage](http://www.bigdatalab.ac.cn/~lanyanyan/)
 - **Xueqi Cheng**
-    - Institute of Computing Technolgy, Chinese Academy of Sciences 
+    - Institute of Computing Technolgy, Chinese Academy of Sciences
     - [HomePage](http://www.bigdatalab.ac.cn/~cxq/)
 
 ## Environment
@@ -305,23 +300,20 @@ Development Teams
 - **Yixing Fan**
     - Institute of Computing Technolgy, Chinese Academy of Sciences
     - [Google Scholar](https://scholar.google.com/citations?user=w5kGcUsAAAAJ&hl=en)
-- **Liang Pang** 
+- **Liang Pang**
     - Institute of Computing Technolgy, Chinese Academy of Sciences
     - [Google Scholar](https://scholar.google.com/citations?user=1dgQHBkAAAAJ&hl=zh-CN)
-- **Liu Yang** 
+- **Liu Yang**
     - Center for Intelligent Information Retrieval, University of Massachusetts Amherst
     - [HomePage](https://sites.google.com/site/lyangwww/)
 
 Acknowledgements
 =====
-We would like to express our appreciation to the following people for contributing source code to MatchZoo, including [Yixing Fan](https://scholar.google.com/citations?user=w5kGcUsAAAAJ&hl=en), [Liang Pang](https://scholar.google.com/citations?user=1dgQHBkAAAAJ&hl=zh-CN), [Liu Yang](https://sites.google.com/site/lyangwww/), [Yukun Zheng](), [Lijuan Chen](), [Jianpeng Hou](https://github.com/HouJP), [Zhou Yang](), [Niuguo cheng](https://github.com/niuox) etc..
+We would like to express our appreciation to the following people for contributing source code to MatchZoo, including [Yixing Fan](https://scholar.google.com/citations?user=w5kGcUsAAAAJ&hl=en), [Liang Pang](https://scholar.google.com/citations?user=1dgQHBkAAAAJ&hl=zh-CN), [Liu Yang](https://sites.google.com/site/lyangwww/), [Lijuan Chen](), [Jianpeng Hou](https://github.com/HouJP), [Zhou Yang](), [Niuguo cheng](https://github.com/niuox) etc..
 
 Feedback and Join Us
 =====
 Feel free to post any questions or suggestions on [GitHub Issues](https://github.com/faneshion/MatchZoo/issues) and we will reply to your questions there. You can also suggest adding new deep text maching models into MatchZoo and apply for joining us to develop MatchZoo together.
-
-Update in 12/10/2017: We have applied another WeChat ID: CLJ_Keep. Anyone who want to join the WeChat group can add this WeChat id as a friend. Please tell us your name, company or school, city when you send such requests. After you added "CLJ_Keep" as one of your WeChat friends, she will invite you to join the MatchZoo WeChat group. "CLJ_Keep" is one member of the MatchZoo team.
-
 <div align='center'>
-<img src="./docs/_static/images/matchzoo-group.jpeg" width = "200"  alt="图片名称" align=center />
+<img src="./data/matchzoo-group.jpeg" width = "200"  alt="图片名称" align=center />
 </div>

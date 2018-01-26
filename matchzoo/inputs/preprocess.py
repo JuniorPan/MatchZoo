@@ -1,21 +1,18 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
 
+
+from __future__ import print_function
+from nltk.tokenize import word_tokenize
 import jieba
 import sys
-import six
-import codecs
 import numpy as np
-from tqdm import tqdm
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords as nltk_stopwords
 from nltk.stem import SnowballStemmer
+from tqdm import tqdm
 
-sys.path.append('../inputs')
-sys.path.append('../utils')
 from preparation import *
-from rank_io import *
-
+from utils.rank_io import *
+from utils.grammer_parser import tokens_ner, get_featured_ner_postag_list
 
 class Preprocess(object):
 
@@ -28,16 +25,20 @@ class Preprocess(object):
                  word_stem_config = {},
                  word_lower_config = {},
                  word_filter_config = {},
-                 word_index_config = {}
+                 word_index_config = {},
+                 pos_index_config = {}
                  ):
         # set default configuration
-        self._word_seg_config = { 'enable': True, 'lang': 'en' }
-        self._doc_filter_config = { 'enable': True, 'min_len': 0, 'max_len': six.MAXSIZE }
-        self._word_stem_config = { 'enable': True }
+        self._word_seg_config = { 'enable': True , 'lang': 'en' }
+        self._doc_filter_config = { 'enable': True, 'min_len': 0, 'max_len': sys.maxint }
+        self._word_stem_config = { 'enable': False }
         self._word_lower_config = { 'enable': True }
         self._word_filter_config = { 'enable': True, 'stop_words': nltk_stopwords.words('english'),
-                                     'min_freq': 1, 'max_freq': six.MAXSIZE, 'words_useless': None }
+                                     'min_freq': 1, 'max_freq': sys.maxint, 'words_useless': None }
+        self._pos_filter_config = { 'enable': False, 'stop_words': nltk_stopwords.words('english'),
+                                     'min_freq': 1, 'max_freq': sys.maxint, 'words_useless': None }
         self._word_index_config = { 'word_dict': None }
+        self._pos_index_config = { 'pos_dict': None }
 
         self._word_seg_config.update(word_seg_config)
         self._doc_filter_config.update(doc_filter_config)
@@ -45,11 +46,13 @@ class Preprocess(object):
         self._word_lower_config.update(word_lower_config)
         self._word_filter_config.update(word_filter_config)
         self._word_index_config.update(word_index_config)
+        self._pos_index_config.update(pos_index_config)
 
         self._word_dict = self._word_index_config['word_dict']
+        self._pos_dict = self._pos_index_config['pos_dict']
         self._words_stats = dict()
 
-    def run(self, file_path):
+    def run_orig(self, file_path):
         print('load...')
         dids, docs = Preprocess.load(file_path)
 
@@ -71,14 +74,28 @@ class Preprocess(object):
 
         self._words_stats = Preprocess.cal_words_stat(docs)
 
+        docs4pos = docs
+
         if self._word_filter_config['enable']:
             print('word_filter...')
             docs, self._words_useless = Preprocess.word_filter(docs, self._word_filter_config, self._words_stats)
 
         print('word_index...')
-        docs, self._word_dict = Preprocess.word_index(docs, self._word_index_config)
+        docids, self._word_dict = Preprocess.word_index(docs, self._word_index_config)
 
-        return dids, docs
+        if self._pos_filter_config['enable']:
+            print('word_filter...')
+            docs4pos, self._words_useless = Preprocess.word_filter(docs4pos, self._word_filter_config, self._words_stats)
+        poss = Preprocess.sent_ner(docs4pos)
+        for pos in poss[:5]:
+            print(' '.join(pos))
+        posids, self._pos_dict = Preprocess.pos_index(poss, self._pos_index_config)
+
+        return dids, docids, posids
+
+    def run(self, file_path):
+        dids, docids, docs = self.run_orig(file_path)
+        return dids, docids
 
     @staticmethod
     def parse(line):
@@ -92,8 +109,9 @@ class Preprocess(object):
     def load(file_path):
         dids = list()
         docs = list()
-        f = codecs.open(file_path, 'r', encoding='utf8')
+        f = open(file_path, 'r')
         for line in tqdm(f):
+            line = line.decode('utf8')
             line = line.strip()
             if '' != line:
                 did, doc = Preprocess.parse(line)
@@ -172,6 +190,11 @@ class Preprocess(object):
         return docs
 
     @staticmethod
+    def sent_ner(docs):
+        docs = [get_featured_ner_postag_list(tokens_ner(ws)) for ws in tqdm(docs)]
+        return docs
+
+    @staticmethod
     def word_lower(docs):
         docs = [[w.lower() for w in ws] for ws in tqdm(docs)]
         return docs
@@ -190,18 +213,25 @@ class Preprocess(object):
             config['word_dict'] = Preprocess.build_word_dict(docs)
         docs = [[config['word_dict'][w] for w in ws if w in config['word_dict']] for ws in tqdm(docs)]
         return docs, config['word_dict']
+    
+    @staticmethod
+    def pos_index(docs, config):
+        if config['pos_dict'] is None:
+            config['pos_dict'] = Preprocess.build_word_dict(docs)
+        docs = [[config['pos_dict'][w] for w in ws if w in config['pos_dict']] for ws in tqdm(docs)]
+        return docs, config['pos_dict']
 
     @staticmethod
     def save_lines(file_path, lines):
-        f = codecs.open(file_path, 'w', encoding='utf8')
+        f = open(file_path, 'w')
         for line in lines:
-            line = line
+            line = line.encode('utf8')
             f.write(line + "\n")
         f.close()
 
     @staticmethod
     def load_lines(file_path):
-        f = codecs.open(file_path, 'r', encoding='utf8')
+        f = open(file_path, 'r')
         lines = f.readlines()
         f.close()
         return lines
@@ -212,7 +242,7 @@ class Preprocess(object):
             dic = sorted(dic.items(), key=lambda d:d[1], reverse=False)
             lines = ['%s %s' % (k, v) for k, v in dic]
         else:
-            lines = ['%s %s' % (k, v) for k, v in dic.items()]
+            lines = ['%s %s' % (k, v) for k, v in dic.iteritems()]
         Preprocess.save_lines(file_path, lines)
 
     @staticmethod
@@ -232,6 +262,9 @@ class Preprocess(object):
 
     def save_word_dict(self, word_dict_fp, sort=False):
         Preprocess.save_dict(word_dict_fp, self._word_dict, sort)
+
+    def save_pos_dict(self, pos_dict_fp, sort=False):
+        Preprocess.save_dict(pos_dict_fp, self._pos_dict, sort)
 
     def load_word_dict(self, word_dict_fp):
         self._word_dict = Preprocess.load_dict(word_dict_fp)

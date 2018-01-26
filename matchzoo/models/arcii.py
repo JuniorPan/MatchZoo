@@ -9,8 +9,12 @@ from keras.layers import Reshape, Embedding,Merge, Dot
 from keras.optimizers import Adam
 from model import BasicModel
 
-from layers.Match import *
-from utils.utility import *
+import sys
+sys.path.append('../matchzoo/layers/')
+sys.path.append('../matchzoo/utils/')
+#from DynamicMaxPooling import *
+from Match import *
+from utility import *
 
 class ARCII(BasicModel):
     def __init__(self, config):

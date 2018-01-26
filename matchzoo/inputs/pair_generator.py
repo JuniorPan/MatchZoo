@@ -169,6 +169,105 @@ class PairGenerator(PairBasicGenerator):
             else:
                 yield ({'query': X1, 'query_len': X1_len, 'doc': X2, 'doc_len': X2_len}, Y)
 
+class WordPOS_PairGenerator(PairBasicGenerator):
+    def __init__(self, config):
+        super(WordPOS_PairGenerator, self).__init__(config=config)
+        self.__name = 'WordPOS_PairGenerator'
+        self.config = config
+        self.data1 = config['data1']
+        self.data2 = config['data2']
+        self.postag_data1= config['postag_data1']
+        self.postag_data2= config['postag_data2']
+        self.data1_maxlen = config['text1_maxlen']
+        self.data2_maxlen = config['text2_maxlen']
+        self.pos1_maxlen = config['pos1_maxlen']
+        self.pos2_maxlen = config['pos2_maxlen']
+        self.fill_word = config['vocab_size'] - 1
+        self.check_list.extend(['data1', 'data2', 'postag_data1', 'postag_data2', 'text1_maxlen', 'text2_maxlen'])
+        if config['use_iter']:
+            self.batch_iter = self.get_batch_iter()
+        if not self.check():
+            raise TypeError('[WordPOS_PairGenerator] parameter check wrong.')
+        print('[WordPOS_PairGenerator] init done', end='\n')
+
+    def get_batch_static(self):
+        X1 = np.zeros((self.batch_size * 2, self.data1_maxlen), dtype=np.int32)
+        X1_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
+        XP1_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
+        X2 = np.zeros((self.batch_size * 2, self.data2_maxlen), dtype=np.int32)
+        X2_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
+        XP2_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
+
+        XP1 = np.zeros((self.batch_size * 2, self.pos1_maxlen), dtype=np.int32)
+        XP2 = np.zeros((self.batch_size * 2, self.pos2_maxlen), dtype=np.int32)
+
+        Y = np.zeros((self.batch_size*2,), dtype=np.int32)
+
+        Y[::2] = 1
+        X1[:] = self.fill_word
+        XP1[:] = self.fill_word
+        X2[:] = self.fill_word
+        XP2[:] = self.fill_word
+        for i in range(self.batch_size):
+            d1, d2p, d2n = random.choice(self.pair_list)
+            d1_cont = list(self.data1[d1])
+            d2p_cont = list(self.data2[d2p])
+            d2n_cont = list(self.data2[d2n])
+            dp1_cont = list(self.postag_data1[d1])
+            dp2p_cont = list(self.postag_data2[d2p])
+            dp2n_cont = list(self.postag_data2[d2n])
+            d1_len = min(self.data1_maxlen, len(d1_cont))
+            d2p_len = min(self.data2_maxlen, len(d2p_cont))
+            d2n_len = min(self.data2_maxlen, len(d2n_cont))
+            dp1_len = min(self.pos1_maxlen, len(dp1_cont))
+            dp2p_len = min(self.pos2_maxlen, len(dp2p_cont))
+            dp2n_len = min(self.pos2_maxlen, len(dp2n_cont))
+            X1[i*2,   :d1_len],  X1_len[i*2]   = d1_cont[:d1_len],   d1_len
+            X2[i*2,   :d2p_len], X2_len[i*2]   = d2p_cont[:d2p_len], d2p_len
+            X1[i*2+1, :d1_len],  X1_len[i*2+1] = d1_cont[:d1_len],   d1_len
+            X2[i*2+1, :d2n_len], X2_len[i*2+1] = d2n_cont[:d2n_len], d2n_len
+            XP1[i * 2, :dp1_len], XP1_len[i * 2] = dp1_cont[:dp1_len], dp1_len
+            XP2[i * 2, :dp2p_len], XP2_len[i * 2] = dp2p_cont[:dp2p_len], dp2p_len
+            XP1[i * 2 + 1, :dp1_len], XP1_len[i * 2 + 1] = dp1_cont[:dp1_len], dp1_len
+            XP2[i * 2 + 1, :dp2n_len], XP2_len[i * 2 + 1] = dp2n_cont[:dp2n_len], dp2n_len
+
+        return X1, XP1, X1_len, XP1_len, X2, XP2, X2_len, XP2_len, Y
+
+    def get_batch_iter(self):
+        while True:
+            self.pair_list = next(self.pair_list_iter)
+            for _ in range(self.config['batch_per_iter']):
+                X1 = np.zeros((self.batch_size*2, self.data1_maxlen), dtype=np.int32)
+                X1_len = np.zeros((self.batch_size*2,), dtype=np.int32)
+                X2 = np.zeros((self.batch_size*2, self.data2_maxlen), dtype=np.int32)
+                X2_len = np.zeros((self.batch_size*2,), dtype=np.int32)
+                Y = np.zeros((self.batch_size*2,), dtype=np.int32)
+
+                Y[::2] = 1
+                X1[:] = self.fill_word
+                X2[:] = self.fill_word
+                for i in range(self.batch_size):
+                    d1, d2p, d2n = random.choice(self.pair_list)
+                    d1_len = min(self.data1_maxlen, len(list(self.data1[d1])))
+                    d2p_len = min(self.data2_maxlen, len(list(self.data2[d2p])))
+                    d2n_len = min(self.data2_maxlen, len(list(self.data2[d2n])))
+                    X1[i*2,   :d1_len],  X1_len[i*2]   = self.data1[d1][:d1_len],   d1_len
+                    X2[i*2,   :d2p_len], X2_len[i*2]   = self.data2[d2p][:d2p_len], d2p_len
+                    X1[i*2+1, :d1_len],  X1_len[i*2+1] = self.data1[d1][:d1_len],   d1_len
+                    X2[i*2+1, :d2n_len], X2_len[i*2+1] = self.data2[d2n][:d2n_len], d2n_len
+
+                yield X1, X1_len, X2, X2_len, Y
+
+    def get_batch_generator(self):
+        while True:
+            X1, XP1, X1_len, XP1_len, X2, XP2, X2_len, XP2_len, Y = self.get_batch()
+            # print('shapes: X1:{}, XP1:{}, X2:{}, XPS:{}, Y:{}'.format(X1.shape, XP1.shape, X2.shape, XP2.shape, Y.shape))
+            if self.config['use_dpool']:
+                yield ({'query': X1, 'query_pos': XP1, 'query_len': X1_len, 'query_pos_len': XP1_len, 'doc': X2, 'doc_pos': XP2, 'doc_len': X2_len, 'doc_pos_len': XP2_len, 'dpool_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['text1_maxlen'], self.config['text2_maxlen']), 'dpool_pos_index': DynamicMaxPooling.dynamic_pooling_index(XP1_len, XP2_len, self.config['pos1_maxlen'], self.config['pos2_maxlen'])}, Y)
+            else:
+                yield ({'query': X1, 'query_pos': XP1, 'query_len': X1_len, 'query_pos_len': XP1_len, 'doc': X2, 'doc_pos': XP2, 'doc_len': X2_len, 'doc_pos_len': XP2_len}, Y)
+
+
 class Triletter_PairGenerator(PairBasicGenerator):
     def __init__(self, config):
         super(Triletter_PairGenerator, self).__init__(config=config)
@@ -193,7 +292,7 @@ class Triletter_PairGenerator(PairBasicGenerator):
         word_triletter_map = {}
         for line in open(wt_map_file):
             r = line.strip().split()
-            word_triletter_map[int(r[0])] = list(map(int, r[1:]))
+            word_triletter_map[int(r[0])] = map(int, r[1:])
         return word_triletter_map
 
     def map_word_to_triletter(self, words):
@@ -260,18 +359,16 @@ class Triletter_PairGenerator(PairBasicGenerator):
                 X1, X2 = [], []
                 for i in range(self.batch_size):
                     d1, d2p, d2n = random.choice(self.pair_list)
-                    d1_cont = list(self.data1[d1])
-                    d2p_cont = list(self.data2[d2p])
-                    d2n_cont = list(self.data2[d2n])
-                    d1_len = len(d1_cont)
-                    d2p_len = len(d2p_cont)
-                    d2n_len = len(d2n_cont)
+                    d1_len = len(list(self.data1[d1]))
+                    d2p_len = len(list(self.data2[d2p]))
+                    d2n_len = len(list(self.data2[d2n]))
                     X1_len[i*2],  X1_len[i*2+1]   = d1_len, d1_len
                     X2_len[i*2],  X2_len[i*2+1]   = d2p_len, d2n_len
-                    X1.append(self.map_word_to_triletter(d1_cont))
-                    X1.append(self.map_word_to_triletter(d1_cont))
-                    X2.append(self.map_word_to_triletter(d2p_cont))
-                    X2.append(self.map_word_to_triletter(d2n_cont))
+                    X1.append(self.map_word_to_triletter(self.data1[d1]))
+                    X1.append(self.map_word_to_triletter(self.data1[d1]))
+                    X2.append(self.map_word_to_triletter(self.data2[d2p]))
+                    X2.append(self.map_word_to_triletter(self.data2[d2n]))
+
                 if self.dtype == 'dssm':
                     yield self.transfer_feat2sparse(X1).toarray(), X1_len, self.transfer_feat2sparse(X2).toarray(), X2_len, Y
                 elif self.dtype == 'cdssm':
