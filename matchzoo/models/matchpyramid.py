@@ -50,7 +50,15 @@ class MatchPyramid(BasicModel):
         d_embed = embedding(doc)
         show_layer_info('Embedding', d_embed)
 
+        idf_embedding = Embedding(self.config['vocab_size'], 1, weights=[self.config['idf']], trainable = self.embed_trainable)
+        q_idf = idf_embedding(query)
+        show_layer_info('query idf', q_idf)
+        d_idf = idf_embedding(doc)
+        show_layer_info('doc idf', d_idf)
+
+        att = Dot(axes=[2, 2], normalize=True)([q_idf, d_idf])
         cross = Dot(axes=[2, 2], normalize=False)([q_embed, d_embed])
+        cross = Multiply()([cross, att, att, att])
         show_layer_info('Dot', cross)
         cross_reshape = Reshape((self.config['text1_maxlen'], self.config['text2_maxlen'], 1))(cross)
         show_layer_info('Reshape', cross_reshape)
