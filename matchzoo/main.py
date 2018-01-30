@@ -57,17 +57,6 @@ def train(config, config_str=''):
     input_conf = config['inputs']
     share_input_conf = input_conf['share']
 
-    # collect idf
-    if 'idf_path' in share_input_conf:
-        idf_dict = read_embedding(filename=share_input_conf['idf_path'])
-        _PAD_ = share_input_conf['vocab_size'] - 1
-        idf_dict[_PAD_] = np.zeros((1, ), dtype=np.float32)
-        embed = np.float32(np.random.uniform(3.0, 9.0, [share_input_conf['vocab_size'], 1]))
-        share_input_conf['idf'] = convert_embed_2_numpy(idf_dict, embed = embed)
-    else:
-        embed = np.float32(np.random.uniform(3.0, 9.0, [share_input_conf['vocab_size'], 1]))
-        share_input_conf['idf'] = embed
-    print('[Embedding] Embedding Load Done.', end='\n')
 
     # collect embedding
     if 'embed_path' in share_input_conf:
@@ -89,6 +78,15 @@ def train(config, config_str=''):
         embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['pos_vocab_size'], share_input_conf['pos_embed_size']]))
         share_input_conf['pos_embed'] = convert_embed_2_numpy(embed_dict, embed = embed)
     print('[Embedding] POS Embedding Load Done.', end='\n')
+    
+    
+    if 'phrase_embed_path' in share_input_conf:
+        embed_dict = read_embedding(filename=share_input_conf['phrase_embed_path'])
+        _PAD_ = share_input_conf['phrase_vocab_size'] - 1
+        embed_dict[_PAD_] = np.zeros((share_input_conf['phrase_embed_size'], ), dtype=np.float32)
+        embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['phrase_vocab_size'], share_input_conf['phrase_embed_size']]))
+        share_input_conf['phrase_embed'] = convert_embed_2_numpy(embed_dict, embed = embed)
+    print('[Embedding] phrase Embedding Load Done.', end='\n')
 
     # list all input tags and construct tags config
     input_train_conf = OrderedDict()
@@ -127,6 +125,14 @@ def train(config, config_str=''):
             datapath = input_conf[tag]['text2_postag_corpus']
             if datapath not in dataset:
                 dataset[datapath], _ = read_data(datapath)
+        if 'text1_phrase_corpus' in input_conf[tag]:
+            datapath = input_conf[tag]['text1_phrase_corpus']
+            if datapath not in dataset:
+                dataset[datapath], _ = read_data(datapath)
+        if 'text2_phrase_corpus' in input_conf[tag]:
+            datapath = input_conf[tag]['text2_phrase_corpus']
+            if datapath not in dataset:
+                dataset[datapath], _ = read_data(datapath)
     print('[Dataset] %s Dataset Load Done.' % len(dataset), end='\n')
 
     # initial data generator
@@ -141,6 +147,10 @@ def train(config, config_str=''):
             conf['postag_data1'] = dataset[conf['text1_postag_corpus']]
         if 'text2_postag_corpus' in conf:
             conf['postag_data2'] = dataset[conf['text2_postag_corpus']]
+        if 'text1_phrase_corpus' in conf:
+            conf['phrase_data1'] = dataset[conf['text1_phrase_corpus']]
+        if 'text2_phrase_corpus' in conf:
+            conf['phrase_data2'] = dataset[conf['text2_phrase_corpus']]
         generator = inputs.get(conf['input_type'])
         train_gen[tag] = generator( config = conf )
 
@@ -152,6 +162,10 @@ def train(config, config_str=''):
             conf['postag_data1'] = dataset[conf['text1_postag_corpus']]
         if 'text2_postag_corpus' in conf:
             conf['postag_data2'] = dataset[conf['text2_postag_corpus']]
+        if 'text1_phrase_corpus' in conf:
+            conf['phrase_data1'] = dataset[conf['text1_phrase_corpus']]
+        if 'text2_phrase_corpus' in conf:
+            conf['phrase_data2'] = dataset[conf['text2_phrase_corpus']]
         generator = inputs.get(conf['input_type'])
         eval_gen[tag] = generator( config = conf )
 
@@ -295,6 +309,10 @@ def predict(config):
             conf['postag_data1'] = dataset[conf['text1_postag_corpus']]
         if 'text2_postag_corpus' in conf:
             conf['postag_data2'] = dataset[conf['text2_postag_corpus']]
+        if 'text1_phrase_corpus' in conf:
+            conf['phrase_data1'] = dataset[conf['text1_phrase_corpus']]
+        if 'text2_phrase_corpus' in conf:
+            conf['phrase_data2'] = dataset[conf['text2_phrase_corpus']]
         generator = inputs.get(conf['input_type'])
         predict_gen[tag] = generator(
                                     #data1 = dataset[conf['text1_corpus']],
@@ -379,7 +397,7 @@ def main(argv):
     parser.add_argument('--phase', default='train', help='Phase: Can be train or predict, the default value is train.')
     parser.add_argument('--model_file', default='./models/arci.config', help='Model_file: MatchZoo model file for the chosen model.')
     args = parser.parse_args()
-    model_file =  args.model_file
+    model_file = args.model_file
     with open(model_file, 'r') as f:
         config = json.load(f)
     phase = args.phase
@@ -390,18 +408,21 @@ def main(argv):
         learning_rate_list = [0.0001, 0.0003, 0.001]
         text12_maxlen_list = [(12,40), (15, 50)]
         pos12_maxlen_list = [(15,50),(20,70)]
+        phrase12_maxlen_list = [(12,40), (15, 50)]
         kernel_count_list = [64, 96]
         kernel_size_list = [3]
         dropout_rate_list = [0, 0.2, 0.4]
         import itertools
-        for param_tuple in itertools.product(kernel_count_list, kernel_size_list, dropout_rate_list, optimizer_list, learning_rate_list, text12_maxlen_list, pos12_maxlen_list):
-            kernel_count, kernel_size, dropout_rate, optimizer, learning_rate, text12_maxlen, pos12_maxlen = param_tuple
+        for param_tuple in itertools.product(kernel_count_list, kernel_size_list, dropout_rate_list, optimizer_list, learning_rate_list, text12_maxlen_list, pos12_maxlen_list, phrase12_maxlen_list):
+            kernel_count, kernel_size, dropout_rate, optimizer, learning_rate, text12_maxlen, pos12_maxlen, phrase12_maxlen = param_tuple
             config['global']['learning_rate'] = learning_rate
             config['global']['optimizer'] = optimizer
             config['inputs']['share']['text1_maxlen'] = text12_maxlen[0]
             config['inputs']['share']['text2_maxlen'] = text12_maxlen[1]
             config['inputs']['share']['pos1_maxlen'] = pos12_maxlen[0]
             config['inputs']['share']['pos2_maxlen'] = pos12_maxlen[1]
+            config['inputs']['share']['phrase1_maxlen'] = phrase12_maxlen[0]
+            config['inputs']['share']['phrase2_maxlen'] = phrase12_maxlen[1]
             config['model']['setting']['kernel_count'] = kernel_count
             config['model']['setting']['kernel_size'] = [kernel_size, kernel_size]
             config['model']['setting']['dpool_size'] = [kernel_size, 10]

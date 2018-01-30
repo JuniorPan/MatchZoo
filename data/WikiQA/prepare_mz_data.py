@@ -4,6 +4,7 @@
 
 import os
 import sys
+sys.path.append('../../matchzoo/')
 sys.path.append('../../matchzoo/inputs/')
 sys.path.append('../../matchzoo/utils/')
 
@@ -52,20 +53,25 @@ if __name__ == '__main__':
     print('Preparation finished ...')
 
     preprocessor = Preprocess(word_stem_config={'enable': False}, word_filter_config={'min_freq': 2})
-    dids, docs, posids = preprocessor.run_orig(dstdir + 'corpus.txt')
+    dids, docs, posids, phraseids = preprocessor.run_orig(dstdir + 'corpus.txt')
     preprocessor.save_pos_dict(dstdir + 'pos_dict.txt', True)
+    preprocessor.save_phrase_dict(dstdir + 'phrase_dict.txt', True)
+
     # preprocessor.save_pos_stats(dstdir + 'pos_stats.txt', True)
     preprocessor.save_word_dict(dstdir + 'word_dict.txt', True)
     preprocessor.save_words_stats(dstdir + 'word_stats.txt', True)
 
     fout = open(dstdir + 'corpus_preprocessed.txt', 'w')
     fout_pos = open(dstdir + 'corpus_postag_preprocessed.txt','w')
+    fout_phrase = open(dstdir + 'corpus_phrase_preprocessed.txt','w')
     for inum, did in enumerate(dids):
         try:
             id_list = list(map(str,docs[inum]))
             pos_list = list(map(str,posids[inum]))
+            phrase_list = list(map(str,phraseids[inum]))
             fout.write('%s %s %s\n' % (did, len(id_list), ' '.join(id_list)))
             fout_pos.write('%s %s %s\n' % (did, len(pos_list), ' '.join(pos_list)))
+            fout_phrase.write('%s %s %s\n' % (did, len(phrase_list), ' '.join(phrase_list)))
         except Exception:
             pass
     fout.close()

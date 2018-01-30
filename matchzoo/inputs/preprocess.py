@@ -13,6 +13,7 @@ from tqdm import tqdm
 from preparation import *
 from utils.rank_io import *
 from utils.grammer_parser import tokens_ner, get_featured_ner_postag_list
+from utils.phrase_extractor import *
 
 class Preprocess(object):
 
@@ -33,12 +34,14 @@ class Preprocess(object):
         self._doc_filter_config = { 'enable': True, 'min_len': 0, 'max_len': sys.maxint }
         self._word_stem_config = { 'enable': False }
         self._word_lower_config = { 'enable': True }
-        self._word_filter_config = { 'enable': True, 'stop_words': nltk_stopwords.words('english'),
+        self._word_filter_config = { 'enable': False, 'stop_words': nltk_stopwords.words('english'),
                                      'min_freq': 1, 'max_freq': sys.maxint, 'words_useless': None }
         self._pos_filter_config = { 'enable': False, 'stop_words': nltk_stopwords.words('english'),
                                      'min_freq': 1, 'max_freq': sys.maxint, 'words_useless': None }
+        self._phrase_filter_config = { 'enable':False }
         self._word_index_config = { 'word_dict': None }
         self._pos_index_config = { 'pos_dict': None }
+        self._phrase_index_config = { 'phrase_dict': None }
 
         self._word_seg_config.update(word_seg_config)
         self._doc_filter_config.update(doc_filter_config)
@@ -50,7 +53,9 @@ class Preprocess(object):
 
         self._word_dict = self._word_index_config['word_dict']
         self._pos_dict = self._pos_index_config['pos_dict']
+        self._phrase_dict = self._phrase_index_config['phrase_dict']
         self._words_stats = dict()
+        self._phraser = PhraseExtractor().build()
 
     def run_orig(self, file_path):
         print('load...')
@@ -74,7 +79,7 @@ class Preprocess(object):
 
         self._words_stats = Preprocess.cal_words_stat(docs)
 
-        docs4pos = docs
+        docs4pos, docs4phrase = docs, docs
 
         if self._word_filter_config['enable']:
             print('word_filter...')
@@ -86,16 +91,24 @@ class Preprocess(object):
         if self._pos_filter_config['enable']:
             print('word_filter...')
             docs4pos, self._words_useless = Preprocess.word_filter(docs4pos, self._word_filter_config, self._words_stats)
+
+        phrases = self.extract_phrase(docs4phrase)
+        phraseids, self._phrase_dict = Preprocess.phrase_index(phrases, self._phrase_index_config)
+
         poss = Preprocess.sent_ner(docs4pos)
         for pos in poss[:5]:
             print(' '.join(pos))
         posids, self._pos_dict = Preprocess.pos_index(poss, self._pos_index_config)
 
-        return dids, docids, posids
+        return dids, docids, posids, phraseids
 
     def run(self, file_path):
         dids, docids, docs = self.run_orig(file_path)
         return dids, docids
+
+    def extract_phrase(self, docs):
+        docs = [self._phraser.extract(' '.join(ws)) for ws in tqdm(docs)]
+        return docs
 
     @staticmethod
     def parse(line):
@@ -222,6 +235,13 @@ class Preprocess(object):
         return docs, config['pos_dict']
 
     @staticmethod
+    def phrase_index(docs, config):
+        if config['phrase_dict'] is None:
+            config['phrase_dict'] = Preprocess.build_word_dict(docs)
+        docs = [[config['phrase_dict'][w] for w in ws if w in config['phrase_dict']] for ws in tqdm(docs)]
+        return docs, config['phrase_dict']
+
+    @staticmethod
     def save_lines(file_path, lines):
         f = open(file_path, 'w')
         for line in lines:
@@ -265,6 +285,9 @@ class Preprocess(object):
 
     def save_pos_dict(self, pos_dict_fp, sort=False):
         Preprocess.save_dict(pos_dict_fp, self._pos_dict, sort)
+
+    def save_phrase_dict(self, phrase_dict_fp, sort=False):
+        Preprocess.save_dict(phrase_dict_fp, self._phrase_dict, sort)
 
     def load_word_dict(self, word_dict_fp):
         self._word_dict = Preprocess.load_dict(word_dict_fp)

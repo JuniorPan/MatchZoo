@@ -31,3 +31,7 @@ def wkdp(token):
 
 WORD_DICT_PATH = wkdp('word_dict.txt')
 GEMINET_CONF_PATH = confp('geminet_wikiqa.config')
+
+WK_CORPUS = wkdp('corpus.txt')
+
+load_phrase_extractor = True

@@ -178,10 +178,14 @@ class WordPOS_PairGenerator(PairBasicGenerator):
         self.data2 = config['data2']
         self.postag_data1= config['postag_data1']
         self.postag_data2= config['postag_data2']
+        self.phrase_data1= config['phrase_data1']
+        self.phrase_data2= config['phrase_data2']
         self.data1_maxlen = config['text1_maxlen']
         self.data2_maxlen = config['text2_maxlen']
         self.pos1_maxlen = config['pos1_maxlen']
         self.pos2_maxlen = config['pos2_maxlen']
+        self.phrase1_maxlen = config['phrase1_maxlen']
+        self.phrase2_maxlen = config['phrase2_maxlen']
         self.fill_word = config['vocab_size'] - 1
         self.check_list.extend(['data1', 'data2', 'postag_data1', 'postag_data2', 'text1_maxlen', 'text2_maxlen'])
         if config['use_iter']:
@@ -193,45 +197,67 @@ class WordPOS_PairGenerator(PairBasicGenerator):
     def get_batch_static(self):
         X1 = np.zeros((self.batch_size * 2, self.data1_maxlen), dtype=np.int32)
         X1_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
-        XP1_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
         X2 = np.zeros((self.batch_size * 2, self.data2_maxlen), dtype=np.int32)
         X2_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
-        XP2_len = np.zeros((self.batch_size * 2,), dtype=np.int32)
 
         XP1 = np.zeros((self.batch_size * 2, self.pos1_maxlen), dtype=np.int32)
         XP2 = np.zeros((self.batch_size * 2, self.pos2_maxlen), dtype=np.int32)
+
+        XPh1 = np.zeros((self.batch_size * 2, self.phrase1_maxlen), dtype=np.int32)
+        XPh2 = np.zeros((self.batch_size * 2, self.phrase2_maxlen), dtype=np.int32)
 
         Y = np.zeros((self.batch_size*2,), dtype=np.int32)
 
         Y[::2] = 1
         X1[:] = self.fill_word
         XP1[:] = self.fill_word
+        XPh1[:] = self.fill_word
+
         X2[:] = self.fill_word
         XP2[:] = self.fill_word
+        XPh1[:] = self.fill_word
         for i in range(self.batch_size):
             d1, d2p, d2n = random.choice(self.pair_list)
             d1_cont = list(self.data1[d1])
             d2p_cont = list(self.data2[d2p])
             d2n_cont = list(self.data2[d2n])
+
             dp1_cont = list(self.postag_data1[d1])
             dp2p_cont = list(self.postag_data2[d2p])
             dp2n_cont = list(self.postag_data2[d2n])
+
+            dph1_cont = list(self.phrase_data1[d1])
+            dph2p_cont = list(self.phrase_data2[d2p])
+            dph2n_cont = list(self.phrase_data2[d2n])
+
             d1_len = min(self.data1_maxlen, len(d1_cont))
             d2p_len = min(self.data2_maxlen, len(d2p_cont))
             d2n_len = min(self.data2_maxlen, len(d2n_cont))
+
             dp1_len = min(self.pos1_maxlen, len(dp1_cont))
             dp2p_len = min(self.pos2_maxlen, len(dp2p_cont))
             dp2n_len = min(self.pos2_maxlen, len(dp2n_cont))
+
+            dph1_len = min(self.phrase1_maxlen, len(dph1_cont))
+            dph2p_len = min(self.phrase2_maxlen, len(dph2p_cont))
+            dph2n_len = min(self.phrase2_maxlen, len(dph2n_cont))
+
             X1[i*2,   :d1_len],  X1_len[i*2]   = d1_cont[:d1_len],   d1_len
             X2[i*2,   :d2p_len], X2_len[i*2]   = d2p_cont[:d2p_len], d2p_len
             X1[i*2+1, :d1_len],  X1_len[i*2+1] = d1_cont[:d1_len],   d1_len
             X2[i*2+1, :d2n_len], X2_len[i*2+1] = d2n_cont[:d2n_len], d2n_len
-            XP1[i * 2, :dp1_len], XP1_len[i * 2] = dp1_cont[:dp1_len], dp1_len
-            XP2[i * 2, :dp2p_len], XP2_len[i * 2] = dp2p_cont[:dp2p_len], dp2p_len
-            XP1[i * 2 + 1, :dp1_len], XP1_len[i * 2 + 1] = dp1_cont[:dp1_len], dp1_len
-            XP2[i * 2 + 1, :dp2n_len], XP2_len[i * 2 + 1] = dp2n_cont[:dp2n_len], dp2n_len
 
-        return X1, XP1, X1_len, XP1_len, X2, XP2, X2_len, XP2_len, Y
+            XP1[i * 2, :dp1_len], X1_len[i * 2] = dp1_cont[:dp1_len], dp1_len
+            XP2[i * 2, :dp2p_len], X2_len[i * 2] = dp2p_cont[:dp2p_len], dp2p_len
+            XP1[i * 2 + 1, :dp1_len], X1_len[i * 2 + 1] = dp1_cont[:dp1_len], dp1_len
+            XP2[i * 2 + 1, :dp2n_len], X2_len[i * 2 + 1] = dp2n_cont[:dp2n_len], dp2n_len
+
+            XPh1[i * 2, :dph1_len], X1_len[i * 2] = dph1_cont[:dph1_len], dph1_len
+            XPh2[i * 2, :dph2p_len], X2_len[i * 2] = dph2p_cont[:dph2p_len], dph2p_len
+            XPh1[i * 2 + 1, :dph1_len], X1_len[i * 2 + 1] = dph1_cont[:dph1_len], dph1_len
+            XPh2[i * 2 + 1, :dph2n_len], X2_len[i * 2 + 1] = dph2n_cont[:dph2n_len], dph2n_len
+
+        return X1, XP1, XPh1, X1_len, X2, XP2, XPh2, X2_len, Y
 
     def get_batch_iter(self):
         while True:
@@ -260,12 +286,12 @@ class WordPOS_PairGenerator(PairBasicGenerator):
 
     def get_batch_generator(self):
         while True:
-            X1, XP1, X1_len, XP1_len, X2, XP2, X2_len, XP2_len, Y = self.get_batch()
+            X1, XP1, XPh1, X1_len, X2, XP2, XPh2, X2_len, Y = self.get_batch()
             # print('shapes: X1:{}, XP1:{}, X2:{}, XPS:{}, Y:{}'.format(X1.shape, XP1.shape, X2.shape, XP2.shape, Y.shape))
             if self.config['use_dpool']:
-                yield ({'query': X1, 'query_pos': XP1, 'query_len': X1_len, 'query_pos_len': XP1_len, 'doc': X2, 'doc_pos': XP2, 'doc_len': X2_len, 'doc_pos_len': XP2_len, 'dpool_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['text1_maxlen'], self.config['text2_maxlen']), 'dpool_pos_index': DynamicMaxPooling.dynamic_pooling_index(XP1_len, XP2_len, self.config['pos1_maxlen'], self.config['pos2_maxlen'])}, Y)
+                yield ({'query': X1, 'query_pos': XP1, 'query_phrase': XPh1, 'query_len': X1_len, 'doc': X2, 'doc_pos': XP2, 'doc_phrase': XPh2, 'doc_len': X2_len, 'dpool_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['text1_maxlen'], self.config['text2_maxlen']), 'dpool_pos_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['pos1_maxlen'], self.config['pos2_maxlen']), 'dpool_phrase_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['phrase1_maxlen'], self.config['phrase2_maxlen'])}, Y)
             else:
-                yield ({'query': X1, 'query_pos': XP1, 'query_len': X1_len, 'query_pos_len': XP1_len, 'doc': X2, 'doc_pos': XP2, 'doc_len': X2_len, 'doc_pos_len': XP2_len}, Y)
+                yield ({'query': X1, 'query_pos': XP1, 'query_phrase': XPh1, 'query_len': X1_len, 'doc': X2, 'doc_pos': XP2, 'doc_phrase': XPh2, 'doc_len': X2_len}, Y)
 
 
 class Triletter_PairGenerator(PairBasicGenerator):

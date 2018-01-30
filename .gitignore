@@ -6,6 +6,7 @@
 *.trec
 *.ranklist
 *.DS_Store
+*.pkl
 *.mq2007
 core.*
 matchzoo/*.txt
