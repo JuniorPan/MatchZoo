@@ -57,6 +57,17 @@ def train(config, config_str=''):
     input_conf = config['inputs']
     share_input_conf = input_conf['share']
 
+    # collect idf
+    if 'idf_path' in share_input_conf:
+        idf_dict = read_embedding(filename=share_input_conf['idf_path'])
+        _PAD_ = share_input_conf['vocab_size'] - 1
+        idf_dict[_PAD_] = np.zeros((1, ), dtype=np.float32)
+        embed = np.float32(np.random.uniform(3.0, 9.0, [share_input_conf['vocab_size'], 1]))
+        share_input_conf['idf'] = convert_embed_2_numpy(idf_dict, embed = embed)
+    else:
+        embed = np.float32(np.random.uniform(3.0, 9.0, [share_input_conf['vocab_size'], 1]))
+        share_input_conf['idf'] = embed
+    print('[Embedding] Embedding Load Done.', end='\n')
 
     # collect embedding
     if 'embed_path' in share_input_conf:
@@ -252,6 +263,7 @@ def predict(config):
         embed_dict[_PAD_] = np.zeros((share_input_conf['embed_size'], ), dtype=np.float32)
         embed = np.float32(np.random.uniform(-0.02, 0.02, [share_input_conf['vocab_size'], share_input_conf['embed_size']]))
         share_input_conf['embed'] = convert_embed_2_numpy(embed_dict, embed = embed)
+        # add idf embedding here
     else:
         embed = np.float32(np.random.uniform(-0.2, 0.2, [share_input_conf['vocab_size'], share_input_conf['embed_size']]))
         share_input_conf['embed'] = embed

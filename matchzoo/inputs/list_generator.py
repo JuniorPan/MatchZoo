@@ -233,11 +233,11 @@ class WordPOS_ListGenerator(ListBasicGenerator):
             yield X1, XP1, XPh1, X1_len, X2, XP2, XPh2, X2_len, Y, ID_pairs, list_count
 
     def get_batch_generator(self):
-        for X1, XP1, XPh1, X1_len, X2, XP2, XPh2, X2_len, Y, ID_pairs, list_count in self.get_batch():
+        for X1, XP1, XPh1, X1_len, X2, XP2, XPh2, X2_len, Y, ID_pairs, list_counts in self.get_batch():
             if self.config['use_dpool']:
-                yield ({'query': X1, 'query_pos': XP1, 'phrase_pos': XPh1, 'query_len': X1_len, 'doc': X2, 'doc_pos': XP2, 'doc_phrase': XPh2, 'doc_len': X2_len, 'dpool_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['text1_maxlen'], self.config['text2_maxlen']), 'dpool_pos_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['pos1_maxlen'], self.config['pos2_maxlen']), 'dpool_phrase_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['phrase1_maxlen'], self.config['phrase2_maxlen']), 'ID': ID_pairs, 'list_counts': list_counts}, Y)
+                yield ({'query': X1, 'query_pos': XP1, 'query_phrase': XPh1, 'query_len': X1_len, 'doc': X2, 'doc_pos': XP2, 'doc_phrase': XPh2, 'doc_len': X2_len, 'dpool_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['text1_maxlen'], self.config['text2_maxlen']), 'dpool_pos_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['pos1_maxlen'], self.config['pos2_maxlen']), 'dpool_phrase_index': DynamicMaxPooling.dynamic_pooling_index(X1_len, X2_len, self.config['phrase1_maxlen'], self.config['phrase2_maxlen']), 'ID': ID_pairs, 'list_counts': list_counts}, Y)
             else:
-                yield ({'query': X1, 'query_pos': XP1, 'phrase_pos': XPh1, 'query_len': X1_len, 'doc': X2, 'doc_pos': XP2, 'doc_phrase': XPh2, 'doc_len': X2_len, 'ID': ID_pairs, 'list_counts': list_counts}, Y)
+                yield ({'query': X1, 'query_pos': XP1, 'query_phrase': XPh1, 'query_len': X1_len, 'doc': X2, 'doc_pos': XP2, 'doc_phrase': XPh2, 'doc_len': X2_len, 'ID': ID_pairs, 'list_counts': list_counts}, Y)
 
     def get_all_data(self):
         x1_ls, x1_len_ls, x2_ls, x2_len_ls, y_ls, list_count_ls = [], [], [], [], [], []

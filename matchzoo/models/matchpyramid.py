@@ -93,7 +93,7 @@ class MatchPyramid(BasicModel):
         conv2d = Conv2D(self.config['kernel_count'], self.config['kernel_size'], padding='same', activation='relu')
         dpool = DynamicMaxPooling(self.config['dpool_size'][0], self.config['dpool_size'][1])
 
-        conv1 = conv2d(cross_reshape)
+        conv1 = conv2d(tw_term_cross_reshape)
         show_layer_info('Conv2D', conv1)
         pool1 = dpool([conv1, dpool_index])
         show_layer_info('DynamicMaxPooling', pool1)
@@ -184,10 +184,11 @@ class MatchPyramid(BasicModel):
         Concat phrase channel tw_att_term channel and pos_att_term channel
         '''
         concat = Concatenate()([pool1_flat_drop, pool1_flat_drop_pos, pool1_flat_drop_phrase])
+        #concat = #Concatenate()([pool1_flat_drop,])
         if self.config['target_mode'] == 'classification':
-            out_ = Dense(2, activation='softmax')(pool1_flat_drop)
+            out_ = Dense(2, activation='softmax')(pool1_flat_drop_pos)
         elif self.config['target_mode'] in ['regression', 'ranking']:
-            out_ = Dense(1)(pool1_flat_drop)
+            out_ = Dense(1)(pool1_flat_drop_pos)
         show_layer_info('Dense', out_)
 
         model = Model(inputs=[query, query_pos, query_phrase, doc, doc_pos, doc_phrase, dpool_index, dpool_pos_index, dpool_phrase_index], outputs=out_)

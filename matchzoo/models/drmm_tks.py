@@ -10,9 +10,7 @@ from keras.activations import softmax
 
 import sys
 
-from theano.sparse import Dot
-
-from matchzoo.utils.utility import show_layer_info
+from utils.utility import show_layer_info
 
 sys.path.append('../matchzoo/utils/')
 from utility import *
