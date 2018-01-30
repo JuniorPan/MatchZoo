@@ -70,32 +70,6 @@ class MatchPyramid(BasicModel):
         show_layer_info('Embedding', d_embed)
         cross = Dot(axes=[2, 2], normalize=False)([q_embed, d_embed])
 
-
-        '''
-        Constructing bi-gram channel
-        '''
-        q_conv1 = Conv1D(self.config['embed_size'], self.config['1d_kernel_size'], padding='same', input_shape=(None, self.config['embed_size']), activation='relu')(q_embed)
-        show_layer_info('Conv2D', q_conv1)
-        d_conv1 = Conv1D(self.config['embed_size'], self.config['1d_kernel_size'], padding='same', input_shape=(None, self.config['embed_size']), activation='relu')(d_embed)
-        show_layer_info('Conv2D', d_conv1)
-
-        bi_cross = Dot(axes=[2, 2], normalize=False)([q_conv1, d_conv1])
-        show_layer_info('Dot', bi_cross)
-        bi_cross_reshape = Reshape((self.config['text1_maxlen'], self.config['text2_maxlen'], 1))(bi_cross)
-        show_layer_info('Reshape', bi_cross_reshape)
-
-        conv2d = Conv2D(self.config['kernel_count'], self.config['kernel_size'], padding='same', activation='relu')
-        dpool = DynamicMaxPooling(self.config['dpool_size'][0], self.config['dpool_size'][1])
-
-        conv1_bigram = conv2d(bi_cross_reshape)
-        show_layer_info('Conv2D', conv1_bigram)
-        pool1_bigram = dpool([conv1_bigram, dpool_index])
-        show_layer_info('DynamicMaxPooling', pool1_bigram)
-        pool1_bigram_flat = Flatten()(pool1_bigram)
-        show_layer_info('Flatten', pool1_bigram_flat)
-        pool1_flat_drop_bigram = Dropout(rate=self.config['dropout_rate'])(pool1_bigram_flat)
-        show_layer_info('Dropout', pool1_flat_drop_bigram)
-
         '''
         Constructing attention channel based on term weight
         '''
@@ -209,16 +183,15 @@ class MatchPyramid(BasicModel):
         '''
         Concat phrase channel tw_att_term channel and pos_att_term channel
         '''
-        concat = Concatenate()([pool1_flat_drop, pool1_flat_drop_phrase, pool1_flat_drop_bigram])
+        concat = Concatenate()([pool1_flat_drop, pool1_flat_drop_phrase])
         show_layer_info('concat', concat)
         #concat = #Concatenate()([pool1_flat_drop,])
         if self.config['target_mode'] == 'classification':
-            out_ = Dense(2, activation='softmax')(concat)
+            out_ = Dense(2, activation='softmax')(pool1_flat_drop)
         elif self.config['target_mode'] in ['regression', 'ranking']:
             out_1 = Dense(64)(concat)
-            # out_2 = Dropout(rate=self.config['dropout_rate'])(Dense(32)(out_1))
-            # out_3 = Dropout(rate=self.config['dropout_rate'])(Dense(32)(out_2))
-            out_ = Dense(1)(out_1)
+            out_2 = Dense(16)(out_1)
+            out_ = Dense(1)(out_2)
         show_layer_info('Dense', out_)
 
         model = Model(inputs=[query, query_pos, query_phrase, doc, doc_pos, doc_phrase, dpool_index, dpool_pos_index, dpool_phrase_index], outputs=out_)
